@@ -2,7 +2,7 @@ import random
 print("Welcome to the Number Guessing Game! You have 3 lives for each level")
 n = 1
 while n < 20:
-    x = [i for i in range (1, 5*n+1 )]
+    x = [i for i in range (1, 5*n+1 )] # x = random.randomint(1, 5*n+1)
     x = random.choice(x)
     s = 3
     while s > 0:
@@ -15,7 +15,7 @@ while n < 20:
             else: print("Your guess is correct, you are now in level ", n)
             break
         else:
-            s += -1
+            s -= 1
             if s == 0:
                 print("GAME OVER")
             else:
