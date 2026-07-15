@@ -17,26 +17,30 @@ def tictactoe(winner):
             if turn %2 ==1:
                 
                 y = 0
+                y = int(input(f"Player 1 turn {int ((turn+1)/2)}: "))-1
                 try:
-                    y = int(input(f"Player 1 turn {int ((turn+1)/2)}: "))-1
-                    if x[y] == "O" or x[y] == "X":
+                    if y<1 or y>9:
+                         print("Please type an integer between 1 and 9")
+                    elif x[y] == "O" or x[y] == "X":
                         print("Oops, this square is already taken!")
                     else:
                         x[y] = "O"
                         turn += 1
                 except ValueError:
-                    print("Please type an integer")
+                    print("Please type an integer between 1 and 9")
             else:
                     y = 0
+                    y = int(input(f"Player 2 turn {int ((turn)/2)}: "))-1
                     try:
-                        y = int(input(f"Player 2 turn {int ((turn)/2)-1}: "))-1
-                        if x[y] == "O" or x[y] == "X":
+                        if y<1 or y>9:
+                            print("Please type an integer between 1 and 9")
+                        elif x[y] == "O" or x[y] == "X":
                             print("Oops, this square is already taken!")
                         else:
                             x[y] = "X"
                             turn += 1
                     except ValueError:
-                        print("Please type an integer")
+                        print("Please type an integer between 1 and 9")
             return "0"
 
 
