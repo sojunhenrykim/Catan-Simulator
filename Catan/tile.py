@@ -8,4 +8,3 @@ class Tile:
     def __str__(self):
         return (f'Coordinates:{self.coord}\nResource: {self.resource}\nNumber: {self.number}')
 
-
