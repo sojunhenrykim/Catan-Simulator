@@ -1,12 +1,17 @@
 from tile import Tile
 from road import Road
+from vertex import Vertex
+
 import random
 class Board:
     def __init__(self):
         self.tiles = []
-        self.generateboard()
         self.roads = []
+        self.vertices = {}
+        self.generateboard()
+        self.generatevertices()
         self.generateroads()
+        
 
     def generateboard(self):
         coordinates =[]
@@ -68,7 +73,14 @@ class Board:
                     k.vertices = ['v49', 'v21', 'v20', 'v46', 'v47', 'v48']
                 else:
                     continue
-             
+
+    def generatevertices(self):
+        for tile in self.tiles:
+            for vertex in tile.vertices:
+                if vertex not in self.vertices: 
+                    self.vertices[vertex] = Vertex(vertex)
+                self.vertices[vertex].adjacenttiles.append(tile)
+            
     def generateroads(self):
         roads = set()
         for tile in self.tiles:
@@ -79,10 +91,12 @@ class Board:
             roads.add(tuple(sorted((tile.vertices[4],tile.vertices[5]))))
             roads.add(tuple(sorted((tile.vertices[5],tile.vertices[0]))))
         for a,b in roads:
-            self.roads.append(Road(a,b))
-
-
-             
+            road = Road(a,b)
+            self.roads.append(road)
+            self.vertices[a].neighbour.add(b)
+            self.vertices[b].neighbour.add(a)
+            self.vertices[a].connectedroads.append(road)
+            self.vertices[b].connectedroads.append(road)
 
 
 

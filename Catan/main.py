@@ -1,6 +1,6 @@
 from board import Board
 from player import Player
-
+from game import Game
 board = Board()
 for tile in board.tiles:
     print(tile)
