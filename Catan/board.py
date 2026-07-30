@@ -11,7 +11,6 @@ class Board:
         self.generateboard()
         self.generatevertices()
         self.generateroads()
-        
 
     def generateboard(self):
         coordinates =[]
