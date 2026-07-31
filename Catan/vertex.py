@@ -4,3 +4,5 @@ class Vertex:
         self.adjacenttiles = []
         self.neighbour = set()
         self.connectedroads = []
+        self.owner = None
+        self.building = None
