@@ -1,6 +1,7 @@
 from board import Board
 from player import Player
 from dice import roll
+import random
 road_cost = {"wood":1,"brick":1}
 settlement_cost = {"wood":1,"brick":1, "sheep" :1, "wheat":1}
 city_cost = {"wheat" :2, "ore":3}
@@ -10,12 +11,16 @@ class Game:
     def __init__(self):
         self.board = Board()
         self.players = [Player("Player 1"), Player("Player 2"), Player("Player 3"), Player("Player 4")]
-        self.turnnumber = 0
+        self.currentplayernumber = 0
+        self.turnnumber = 1
     def taketurn(self):
+        player = self.currentplayer()
         result = roll()
-        print(f"Player {self.turnnumber+1} rolled {result}")
+        print(f'{player.name} rolled {result}')
         self.collectresource(result)
-        self.turnnumber = (self.turnnumber+1)%4
+        print(f'{player.name} passes')
+        self.endturn()
+        return result
     def collectresource(self, result):
         if result == 7:
             return
@@ -139,3 +144,61 @@ class Game:
         player.vp +=1
         self.pay(player, city_cost)
         return True
+    def currentplayer(self):
+        return self.players[self.currentplayernumber]
+    def endturn(self):
+        self.currentplayernumber = (self.currentplayernumber + 1) % 4
+        self.turnnumber += 1
+    def setuporder(self):
+        random.shuffle(self.players)
+        return self.players.copy()
+    def setup(self):
+        playerorder = self.setuporder()
+        for k in playerorder:
+            settlementbuilt = False
+            while not settlementbuilt:
+                v = input(f'{k.name}, where do you want to place your first settlement?')
+                if not self.settlementcheck(k, v, setup=True):
+                    print("Invalid placement. Try again.")
+                else:
+                    self.buildsettlement(k, v, setup=True)
+                    print(f'{k.name} placed a settlement at {v}.')
+                    settlementbuilt = True
+            roadbuilt = False
+            while not roadbuilt:
+                a = input(f'{k.name}, where do you want to place your first road? Please enter two vertices separated by a space.')
+                a,b = a.split()
+                if v not in (a,b):
+                    print("Road must be connected to your settlement. Try again.")
+                elif not self.roadcheck(k, a, b, setup=True):
+                    print("Invalid placement. Try again.")
+                else:
+                    self.buildroad(k, a, b, setup=True)
+                    print(f'{k.name} placed a road between {a} and {b}.')
+                    roadbuilt = True
+        playerorder.reverse()
+        for k in playerorder:
+                    settlementbuilt = False
+                    while not settlementbuilt:
+                        v = input(f'{k.name}, where do you want to place your second settlement?')
+                        if not self.settlementcheck(k, v, setup=True):
+                            print("Invalid placement. Try again.")
+                        else:
+                            self.buildsettlement(k, v, setup=True)
+                            print(f'{k.name} placed a settlement at {v}.')
+                            for tile in self.board.tiles:
+                                if v in tile.vertices and tile.resource != "desert":
+                                    k.resources[tile.resource] += 1
+                            settlementbuilt = True
+                    roadbuilt = False
+                    while not roadbuilt:
+                        a = input(f'{k.name}, where do you want to place your second road? Please enter two vertices separated by a space.')
+                        a,b = a.split()
+                        if v not in (a,b):
+                            print("Road must be connected to your settlement. Try again.")
+                        elif not self.roadcheck(k, a, b, setup=True):
+                            print("Invalid placement. Try again.")
+                        else:
+                            self.buildroad(k, a, b, setup=True)
+                            print(f'{k.name} placed a road between {a} and {b}.')
+                            roadbuilt = True
