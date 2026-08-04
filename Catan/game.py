@@ -25,7 +25,7 @@ class Game:
         if result == 7:
             return
         for tile in self.board.tiles:
-            if tile.number == result:
+            if tile is not self.board.robber and tile.number == result:
                 for player in self.players:
                     for vertex in player.settlements:
                         if vertex in tile.vertices:

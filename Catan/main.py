@@ -3,5 +3,6 @@ from game import Game
 game = Game()
 for tile in game.board.tiles:
     print(tile)
-    print()
+    if tile is game.board.robber:
+        print("Robber is on this tile.")
 game.play()

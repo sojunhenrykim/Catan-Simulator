@@ -9,6 +9,7 @@ class Board:
         self.roads = []
         self.vertices = {}
         self.generateboard()
+        self.robber = next(tile for tile in self.tiles if tile.resource == "desert")
         self.generatevertices()
         self.generateroads()
 
