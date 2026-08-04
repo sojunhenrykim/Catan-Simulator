@@ -18,7 +18,7 @@ class Game:
         result = roll()
         print(f'{player.name} rolled {result}')
         self.collectresource(result)
-        print(f'{player.name} passes')
+        self.action(player)
         self.endturn()
         return result
     def collectresource(self, result):
@@ -202,3 +202,55 @@ class Game:
                             self.buildroad(k, a, b, setup=True)
                             print(f'{k.name} placed a road between {a} and {b}.')
                             roadbuilt = True
+    def action(self, player):
+        while True:
+            print(f"{player.name}'s resources\n{player.resources}\nWhat would you like to do, {player.name}?\n")
+            print('1. Build Road\n2. Build Settlement\n3. Build City\n4. Buy Development Card\n5. Trade\n6. End Turn')
+            choice = input().strip()
+            if choice == "1":
+                vertices = input(f'Where do you want to place your road? Please enter two vertices separated by a space.').split()
+                if len(vertices) != 2:
+                    print("Please enter exactly two vertices.")
+                    continue
+                a, b = vertices
+                if not self.roadcheck(player, a, b):
+                    print("Invalid placement or insufficient resources. Try again.")
+                else:
+                    self.buildroad(player, a, b)
+                    print(f'{player.name} built a road between {a} and {b}.')
+            elif choice == "2":
+                v = input(f'Where do you want to place your settlement?')
+                if not self.settlementcheck(player, v):
+                    print("Invalid placement or insufficient resources. Try again.")
+                else:
+                    self.buildsettlement(player, v)
+                    print(f'{player.name} built a settlement at {v}.')
+            elif choice == "3":
+                v = input(f'Which settlement do you want to upgrade to a city?')
+                if not self.citycheck(player, v):
+                    print("Invalid placement or insufficient resources. Try again.")
+                else:
+                    self.buildcity(player, v)
+                    print(f'{player.name} upgraded settlement at {v} to a city.')
+            elif choice == "4":
+                print("Buying development card is not implemented yet.")
+            elif choice == "5":
+                print("Trading is not implemented yet.")
+            elif choice == "6":
+                print(f'{player.name} ended their turn.')
+                break
+            else:
+                print("Invalid choice. Please select a valid option.")
+    def winner(self):
+        for player in self.players:
+            if player.vp >= 10:
+                return player
+        return None
+    def play(self):
+        print("Welcome to Catan!")
+        self.setup()
+        while self.winner() is None:
+            self.taketurn()
+        winner = self.winner()
+        print(f'Congratulations {winner.name}, you have won the game with {winner.vp} victory points!')
+        return winner
