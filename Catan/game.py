@@ -17,13 +17,15 @@ class Game:
         player = self.currentplayer()
         result = roll()
         print(f'{player.name} rolled {result}')
-        self.collectresource(result)
+        if result == 7:
+            self.discard()
+            self.move_robber(player)
+        else:
+            self.collectresource(result)
         self.action(player)
         self.endturn()
         return result
     def collectresource(self, result):
-        if result == 7:
-            return
         for tile in self.board.tiles:
             if tile is not self.board.robber and tile.number == result:
                 for player in self.players:
@@ -254,3 +256,69 @@ class Game:
         winner = self.winner()
         print(f'Congratulations {winner.name}, you have won the game with {winner.vp} victory points!')
         return winner
+    def discard(self):
+        for player in self.players:
+            total_resources = sum(player.resources.values())
+            if total_resources <= 7:
+                continue
+            else:
+                remaining = total_resources // 2
+                print(f'{player.name}, you have {total_resources} resources. You must discard {remaining} resources.')
+                print(f'Your resources: {player.resources}')
+                while remaining>0:
+                    discard_choice = input(f'Enter the resource you want to discard (remaining to discard: {remaining}): ').strip().lower()
+                    if discard_choice not in player.resources or player.resources[discard_choice] <= 0:
+                        print("Invalid choice or insufficient resources. Try again.")
+                    else:
+                        player.resources[discard_choice] -= 1
+                        remaining -= 1
+                print(f'{player.name} has discarded the required resources. Remaining resources: {player.resources}')
+    def move_robber(self, player):
+        print(f'Current robber location: {self.board.robber.coord}')
+        while True:
+            choice = input(f'{player.name}, please enter the new coordinates for the robber in the format "x,y": ').strip()
+            try:
+                x,y = choice.split(",")
+                coordinates = (int(x), int(y))
+            except ValueError:
+                print("Invalid format. Please enter coordinates in the format 'x,y'.")
+                continue
+            newtile = next((tile for tile in self.board.tiles if tile.coord == coordinates), None)
+            if newtile is None:
+                print("Invalid tile coordinates. Please try again.")
+                continue
+            if newtile is self.board.robber:
+                print("The robber is already on this tile. Please choose a different tile.")
+                continue
+            self.board.robber = newtile
+            print(f'Robber moved to {coordinates}.')
+            break
+        eligible_players = []
+        for other_player in self.players:
+            if other_player is not player and sum(other_player.resources.values())>0:
+                for k in other_player.settlements + other_player.cities:
+                    if k in self.board.robber.vertices:
+                        eligible_players.append(other_player)
+                        break
+        if len(eligible_players) == 0:
+            print("No players to steal from.")
+            return
+        else:
+            print("Players you can steal from:")
+            for p in eligible_players:
+                print(f" - {p.name}")
+            while True:
+                steal_choice = input(f'{player.name}, enter the name of the player you want to steal from: ').strip()
+                target_player = next((p for p in eligible_players if p.name == steal_choice), None)
+                if target_player is None:
+                    print("Invalid player name. Please choose from the eligible players.")
+                    continue
+                else:
+                    cards = []
+                    for resource, count in target_player.resources.items():
+                        cards.extend([resource]*count)
+                    stolen_resource = random.choice(cards)
+                    target_player.resources[stolen_resource] -= 1
+                    player.resources[stolen_resource] += 1
+                    print(f'{player.name} stole 1 {stolen_resource} from {target_player.name}.')
+                    break
