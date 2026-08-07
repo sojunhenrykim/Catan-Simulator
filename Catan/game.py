@@ -237,7 +237,7 @@ class Game:
             elif choice == "4":
                 print("Buying development card is not implemented yet.")
             elif choice == "5":
-                print("Trading is not implemented yet.")
+                self.trade(player)
             elif choice == "6":
                 print(f'{player.name} ended their turn.')
                 break
@@ -322,3 +322,64 @@ class Game:
                     player.resources[stolen_resource] += 1
                     print(f'{player.name} stole 1 {stolen_resource} from {target_player.name}.')
                     break
+    def trade(self, player):
+        print(f'{player.name}, please enter the number of the player you want to trade with: ')
+        print("1) Player 1")
+        print("2) Player 2")
+        print("3) Player 3")
+        print("4) Player 4")
+        trade_player = input('5) Bank').strip()
+        if trade_player not in ['1','2','3','4','5']:
+            print("Invalid choice. Please select a valid option.")
+            return
+        if trade_player == '5':
+            tradeable_resources = []
+            for k in player.resources:
+                if player.resources[k] >= 4:
+                    tradeable_resources.append(k)
+            if len(tradeable_resources) == 0:
+                print("You do not have enough resources to trade with the bank.")
+                return
+            print(f'{player.name}, you can trade with the bank with the following resources: {player.resources}')
+            trade_choice = input(f'{player.name}, please enter the resource you want to trade to the bank: ').strip().lower()
+            if trade_choice not in tradeable_resources:
+                print("Invalid choice or insufficient resources. Try again.")
+                return
+            else:
+                player.resources[trade_choice] -= 4
+                print(f'{player.name}, you traded 4 {trade_choice} to the bank.')
+                receive_choice = input(f'{player.name}, please enter the resource you want to receive from the bank: ').strip().lower()
+                if receive_choice not in ['wood','brick','sheep','wheat','ore'] or trade_choice == receive_choice:
+                    print("Invalid choice. Please select a valid resource.")
+                    player.resources[trade_choice] += 4
+                    return
+                else:
+                    player.resources[receive_choice] += 1
+                    print(f'{player.name}, you have received 1 {receive_choice} from the bank.')
+        if trade_player in ['1','2','3','4']:
+            target_player = self.players[int(trade_player) - 1]
+            if target_player is player:
+                print("You cannot trade with yourself.")
+                return
+            trade_player = target_player
+            print(f'{player.name}, you are trading with {trade_player.name}.')
+            offer_resource = input(f'{player.name}, please enter the resource you want to offer: ').strip().lower()
+            if offer_resource not in player.resources or player.resources[offer_resource] <= 0:
+                print("Invalid choice or insufficient resources. Try again.")
+                return
+            request_resource = input(f'{player.name}, please enter the resource you want to request: ').strip().lower()
+            if request_resource not in trade_player.resources or trade_player.resources[request_resource] <= 0:
+                print(f"{trade_player.name} does not have enough {request_resource}. Trade cannot proceed.")
+                return
+            elif offer_resource == request_resource:
+                print("You cannot offer and request the same resource. Trade cannot proceed.")
+                return
+            accept_trade = input(f'{trade_player.name}, do you accept the trade? (yes/no): ').strip().lower()
+            if accept_trade == 'yes':
+                player.resources[offer_resource] -= 1
+                player.resources[request_resource] += 1
+                trade_player.resources[offer_resource] += 1
+                trade_player.resources[request_resource] -= 1
+                print(f'Trade completed: {player.name} gave 1 {offer_resource} to {trade_player.name} and received 1 {request_resource}.')
+            else:
+                print(f'{trade_player.name} declined the trade.')
