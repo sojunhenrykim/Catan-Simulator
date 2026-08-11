@@ -13,6 +13,7 @@ class Game:
         self.players = [Player("Player 1"), Player("Player 2"), Player("Player 3"), Player("Player 4")]
         self.currentplayernumber = 0
         self.turnnumber = 1
+        self.dvcard_list = (["knight"]*14 + ["victory point"]*5 + ["road building"]*2 + ["year of plenty"]*2 + ["monopoly"]*2)
     def taketurn(self):
         player = self.currentplayer()
         result = roll()
@@ -207,7 +208,7 @@ class Game:
     def action(self, player):
         while True:
             print(f"{player.name}'s resources\n{player.resources}\nWhat would you like to do, {player.name}?\n")
-            print('1. Build Road\n2. Build Settlement\n3. Build City\n4. Buy Development Card\n5. Trade\n6. End Turn')
+            print('1. Build Road\n2. Build Settlement\n3. Build City\n4. Buy Development Card\n5. Trade\n6. Use Development Card\n7. End Turn')
             choice = input().strip()
             if choice == "1":
                 vertices = input(f'Where do you want to place your road? Please enter two vertices separated by a space.').split()
@@ -235,10 +236,12 @@ class Game:
                     self.buildcity(player, v)
                     print(f'{player.name} upgraded settlement at {v} to a city.')
             elif choice == "4":
-                print("Buying development card is not implemented yet.")
+                self.buy_devcard(player)
             elif choice == "5":
                 self.trade(player)
             elif choice == "6":
+                self.use_devcard(player)
+            elif choice == "7":
                 print(f'{player.name} ended their turn.')
                 break
             else:
@@ -383,3 +386,98 @@ class Game:
                 print(f'Trade completed: {player.name} gave 1 {offer_resource} to {trade_player.name} and received 1 {request_resource}.')
             else:
                 print(f'{trade_player.name} declined the trade.')
+    def buy_devcard(self, player):
+        dvcard_list = self.dvcard_list
+        if len(dvcard_list) == 0:
+            print("No development cards left to buy.")
+            return False
+        if not self.canafford(player, dvcard_cost):
+            print("Insufficient resources to buy a development card.")
+            return False
+        self.pay(player, dvcard_cost)
+        print(f'{player.name} bought a development card.')
+        pick = random.choice(dvcard_list)
+        dvcard_list.remove(pick)
+        if pick == "knight":
+            player.dvcards["knight"] += 1
+            print(f'{player.name} received a Knight card.')
+        if pick == "victory point":
+            player.vp += 1
+            print(f'{player.name} received a Victory Point.')
+        if pick == "road building":
+            player.dvcards["road building"] += 1
+            print(f'{player.name} received a Road Building card.')
+        if pick == "year of plenty":
+            player.dvcards["year of plenty"] += 1
+            print(f'{player.name} received a Year of Plenty card.')
+        if pick == "monopoly":
+            player.dvcards["monopoly"] += 1
+            print(f'{player.name} received a Monopoly card.')
+        return True
+    def use_devcard(self, player):
+        if sum(player.dvcards.values()) == 0:
+            print("You have no development cards to use.")
+            return
+        print(f'{player.name}, your development cards: {player.dvcards}')
+        print("1) Knight\n2) Road Building\n3) Year of Plenty\n4) Monopoly")
+        card_choice = input("Enter the number of development card you want to use: ").strip()
+        if card_choice not in ['1','2','3','4']:
+            print("Invalid choice. Please select a valid option.")
+            return
+        if card_choice == "1":
+            card_choice_actual = "knight"
+        elif card_choice == "2":
+            card_choice_actual = "road building"
+        elif card_choice == "3":
+            card_choice_actual = "year of plenty"
+        elif card_choice == "4":
+            card_choice_actual = "monopoly"
+        if  player.dvcards[card_choice_actual] <= 0:
+            print("Invalid choice or you do not have that card. Try again.")
+            return
+        if card_choice_actual == "knight":
+            player.dvcards["knight"] -= 1
+            print(f'{player.name} used a Knight card.')
+            self.move_robber(player)
+        elif card_choice_actual == "road building":         
+            print(f'{player.name} used a Road Building card. You can build two roads for free.')
+            for _ in range(2):
+                vertices = input(f'Where do you want to place your road? Please enter two vertices separated by a space.').split()
+                if len(vertices) != 2:
+                    print("Please enter exactly two vertices.")
+                    continue
+                a, b = vertices
+                if not self.roadcheck(player, a, b, setup=True):
+                    print("Invalid placement. Try again.")
+                    continue
+                else:
+                    for resource, amount in road_cost.items():
+                        player.resources[resource] += amount
+                    self.buildroad(player, a, b)
+                    print(f'{player.name} built a road between {a} and {b}.')
+            player.dvcards["road building"] -= 1
+        elif card_choice_actual == "year of plenty": 
+            print(f'{player.name} used a Year of Plenty card. You can take any two resources from the bank.')
+            for _ in range(2):
+                resource_choice = input(f'Enter the resource you want to take (wood, brick, sheep, wheat, ore): ').strip().lower()
+                if resource_choice not in ['wood', 'brick', 'sheep', 'wheat', 'ore']:
+                    print("Invalid resource choice. Try again.")
+                else:
+                    player.resources[resource_choice] += 1
+                    print(f'{player.name} took 1 {resource_choice} from the bank.')
+            player.dvcards["year of plenty"] -= 1
+        elif card_choice_actual == "monopoly":
+            print(f'{player.name} used a Monopoly card. You can choose a resource type and take all of that resource from other players.')
+            resource_choice = input(f'Enter the resource you want to monopolize (wood, brick, sheep, wheat, ore): ').strip().lower()
+            if resource_choice not in ['wood', 'brick', 'sheep', 'wheat', 'ore']:
+                print("Invalid resource choice. Try again.")
+                return
+            total_taken = 0
+            for other_player in self.players:
+                if other_player is not player:
+                    amount = other_player.resources[resource_choice]
+                    total_taken += amount
+                    other_player.resources[resource_choice] = 0
+            player.resources[resource_choice] += total_taken
+            print(f'{player.name} took {total_taken} {resource_choice} from other players.')
+            player.dvcards["monopoly"] -= 1

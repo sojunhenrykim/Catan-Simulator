@@ -6,6 +6,7 @@ class Player:
         self.settlements = []
         self.cities = []
         self.vp = 0
+        self.dvcards = {"knight": 0, "victory point": 0, "road building": 0, "year of plenty": 0, "monopoly": 0}
     def buildroad(self,a,b):
         self.roads.append(tuple(sorted((a,b))))
     def buildsettlement(self,v):
