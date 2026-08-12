@@ -7,6 +7,7 @@ settlement_cost = {"wood":1,"brick":1, "sheep" :1, "wheat":1}
 city_cost = {"wheat" :2, "ore":3}
 dvcard_cost = {"sheep":1, "wheat":1, "ore":1}
 
+
 class Game:
     def __init__(self):
         self.board = Board()
@@ -150,6 +151,11 @@ class Game:
     def currentplayer(self):
         return self.players[self.currentplayernumber]
     def endturn(self):
+        player = self.currentplayer()
+        for a, b in player.newdvcards.items():
+            player.dvcards[a] += b
+            player.newdvcards[a] = 0
+        player.useddevcardthisturn = False
         self.currentplayernumber = (self.currentplayernumber + 1) % 4
         self.turnnumber += 1
     def setuporder(self):
@@ -399,22 +405,25 @@ class Game:
         pick = random.choice(dvcard_list)
         dvcard_list.remove(pick)
         if pick == "knight":
-            player.dvcards["knight"] += 1
+            player.newdvcards["knight"] += 1
             print(f'{player.name} received a Knight card.')
         if pick == "victory point":
             player.vp += 1
             print(f'{player.name} received a Victory Point.')
         if pick == "road building":
-            player.dvcards["road building"] += 1
+            player.newdvcards["road building"] += 1
             print(f'{player.name} received a Road Building card.')
         if pick == "year of plenty":
-            player.dvcards["year of plenty"] += 1
+            player.newdvcards["year of plenty"] += 1
             print(f'{player.name} received a Year of Plenty card.')
         if pick == "monopoly":
-            player.dvcards["monopoly"] += 1
+            player.newdvcards["monopoly"] += 1
             print(f'{player.name} received a Monopoly card.')
         return True
     def use_devcard(self, player):
+        if player.useddevcardthisturn:
+            print("You have already used a development card this turn.")
+            return
         if sum(player.dvcards.values()) == 0:
             print("You have no development cards to use.")
             return
@@ -435,13 +444,28 @@ class Game:
         if  player.dvcards[card_choice_actual] <= 0:
             print("Invalid choice or you do not have that card. Try again.")
             return
+        player.useddevcardthisturn = True
         if card_choice_actual == "knight":
             player.dvcards["knight"] -= 1
             print(f'{player.name} used a Knight card.')
             self.move_robber(player)
+            player.armysize += 1
+            if player.armysize >= 3 and not player.largest_army:
+                if player.armysize > max(p.armysize for p in self.players if p is not player):
+                    print(f'{player.name} has the Largest Army with {player.armysize} knights!')
+                    player.vp += 2
+                    player.largest_army = True
+                    for p in self.players:
+                        if p is player:
+                            continue
+                        else:
+                            if p.largest_army == True:
+                                p.vp -= 2
+                                p.largest_army = False
         elif card_choice_actual == "road building":         
             print(f'{player.name} used a Road Building card. You can build two roads for free.')
-            for _ in range(2):
+            k = 0
+            while k <2:
                 vertices = input(f'Where do you want to place your road? Please enter two vertices separated by a space.').split()
                 if len(vertices) != 2:
                     print("Please enter exactly two vertices.")
@@ -455,6 +479,7 @@ class Game:
                         player.resources[resource] += amount
                     self.buildroad(player, a, b)
                     print(f'{player.name} built a road between {a} and {b}.')
+                    k += 1
             player.dvcards["road building"] -= 1
         elif card_choice_actual == "year of plenty": 
             print(f'{player.name} used a Year of Plenty card. You can take any two resources from the bank.')
