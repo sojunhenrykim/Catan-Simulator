@@ -11,6 +11,8 @@ class Player:
         self.useddevcardthisturn = False
         self.armysize = 0
         self.largest_army = False
+        self.roadsize = 0
+        self.longest_road = False
     def buildroad(self,a,b):
         self.roads.append(tuple(sorted((a,b))))
     def buildsettlement(self,v):

@@ -119,6 +119,7 @@ class Game:
         player.roads.append(tuple(sorted((a,b))))
         if not setup:
             self.pay(player, road_cost)
+        self.longest_road(player)
         return True
     def citycheck(self, player, vertexname, setup=False):
         if vertexname not in self.board.vertices:
@@ -506,3 +507,50 @@ class Game:
             player.resources[resource_choice] += total_taken
             print(f'{player.name} took {total_taken} {resource_choice} from other players.')
             player.dvcards["monopoly"] -= 1
+    def longest_road_check(self,player):
+        owned_roads = set(player.roads)
+        if len(owned_roads) == 0:
+            return 0
+        def search(vertexname, usedroads, started=False):
+            vertex = self.board.vertices[vertexname]
+            if (started and vertex.owner is not None and vertex.owner is not player):
+                return 0
+            longest = 0
+            for road in owned_roads:
+                if road in usedroads:
+                    continue
+                a, b = road
+                if vertexname == a:
+                    nextvertex = b
+                elif vertexname == b:
+                    nextvertex = a
+                else:
+                    continue
+                newusedroads = usedroads | {road}
+                length = 1+search(nextvertex, newusedroads, started = True)
+                longest = max(longest, length)
+            return longest
+        vertices = set()
+        for a, b in owned_roads:
+            vertices.add(a)
+            vertices.add(b)
+        return max(search(vertexname, set()) for vertexname in vertices)
+    def longest_road(self, player):
+        for p in self.players:
+            p.roadsize = self.longest_road_check(p)
+        roadsize = player.roadsize
+        if roadsize < 5 and player.longest_road:
+            player.longest_road = False
+            player.vp -=2
+        if roadsize >= 5 and not player.longest_road:
+            if roadsize > max(p.roadsize for p in self.players if p is not player):
+                            print(f'{player.name} has the longest road with {roadsize} connected roads!')
+                            player.vp += 2
+                            player.longest_road = True
+                            for p in self.players:
+                                if p is player:
+                                    continue
+                                else:
+                                    if p.longest_road == True:
+                                        p.vp -= 2
+                                        p.longest_road = False
