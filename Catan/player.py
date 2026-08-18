@@ -1,5 +1,5 @@
 class Player:
-    def __init__(self, name):
+    def __init__(self, name, strategy = None):
         self.name = name
         self.resources = {"wood":0,"brick":0, "sheep":0,"wheat":0,"ore":0}
         self.roads = []
@@ -13,6 +13,7 @@ class Player:
         self.largest_army = False
         self.roadsize = 0
         self.longest_road = False
+        self.strategy = strategy
     def buildroad(self,a,b):
         self.roads.append(tuple(sorted((a,b))))
     def buildsettlement(self,v):

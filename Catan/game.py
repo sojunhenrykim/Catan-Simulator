@@ -167,7 +167,7 @@ class Game:
         for k in playerorder:
             settlementbuilt = False
             while not settlementbuilt:
-                v = input(f'{k.name}, where do you want to place your first settlement?')
+                v = k.strategy.choose_setup_settlement(self,k)
                 if not self.settlementcheck(k, v, setup=True):
                     print("Invalid placement. Try again.")
                 else:
@@ -176,8 +176,11 @@ class Game:
                     settlementbuilt = True
             roadbuilt = False
             while not roadbuilt:
-                a = input(f'{k.name}, where do you want to place your first road? Please enter two vertices separated by a space.')
-                a,b = a.split()
+                roadchoice = k.strategy.choose_setup_road(self,k,v)
+                if roadchoice is None:
+                    print("Please enter exactly two vertices")
+                    continue
+                a, b = roadchoice
                 if v not in (a,b):
                     print("Road must be connected to your settlement. Try again.")
                 elif not self.roadcheck(k, a, b, setup=True):
@@ -190,7 +193,7 @@ class Game:
         for k in playerorder:
                     settlementbuilt = False
                     while not settlementbuilt:
-                        v = input(f'{k.name}, where do you want to place your second settlement?')
+                        v = k.strategy.choose_setup_settlement(self, k)
                         if not self.settlementcheck(k, v, setup=True):
                             print("Invalid placement. Try again.")
                         else:
@@ -202,8 +205,11 @@ class Game:
                             settlementbuilt = True
                     roadbuilt = False
                     while not roadbuilt:
-                        a = input(f'{k.name}, where do you want to place your second road? Please enter two vertices separated by a space.')
-                        a,b = a.split()
+                        roadchoice = k.strategy.choose_setup_road(self,k,v)
+                        if roadchoice is None:
+                            print("Please enter exactly two vertices")
+                            continue
+                        a, b = roadchoice
                         if v not in (a,b):
                             print("Road must be connected to your settlement. Try again.")
                         elif not self.roadcheck(k, a, b, setup=True):
@@ -214,45 +220,42 @@ class Game:
                             roadbuilt = True
     def action(self, player):
         while True:
-            print(f"{player.name}'s resources\n{player.resources}\nWhat would you like to do, {player.name}?\n")
-            print('1. Build Road\n2. Build Settlement\n3. Build City\n4. Buy Development Card\n5. Trade\n6. Use Development Card\n7. End Turn')
-            choice = input().strip()
-            if choice == "1":
-                vertices = input(f'Where do you want to place your road? Please enter two vertices separated by a space.').split()
-                if len(vertices) != 2:
-                    print("Please enter exactly two vertices.")
-                    continue
-                a, b = vertices
+            action = player.strategy.choose_action(self, player)
+            actiontype = action.get("type")
+            if actiontype == "build_road":
+                a = action.get("a")
+                b = action.get("b")
                 if not self.roadcheck(player, a, b):
-                    print("Invalid placement or insufficient resources. Try again.")
-                else:
-                    self.buildroad(player, a, b)
-                    print(f'{player.name} built a road between {a} and {b}.')
-            elif choice == "2":
-                v = input(f'Where do you want to place your settlement?')
-                if not self.settlementcheck(player, v):
-                    print("Invalid placement or insufficient resources. Try again.")
-                else:
-                    self.buildsettlement(player, v)
-                    print(f'{player.name} built a settlement at {v}.')
-            elif choice == "3":
-                v = input(f'Which settlement do you want to upgrade to a city?')
-                if not self.citycheck(player, v):
-                    print("Invalid placement or insufficient resources. Try again.")
-                else:
-                    self.buildcity(player, v)
-                    print(f'{player.name} upgraded settlement at {v} to a city.')
-            elif choice == "4":
+                    print("Invalid placement or insufficient resources.")
+                    continue
+                self.buildroad(player, a, b)
+                print(f"{player.name} built a road between {a} and {b}.")
+            elif actiontype == "build_settlement":
+                vertex = action.get("vertex")
+
+                if not self.settlementcheck(player, vertex):
+                    print("Invalid placement or insufficient resources.")
+                    continue
+                self.buildsettlement(player, vertex)
+                print(f"{player.name} built a settlement at {vertex}.")
+            elif actiontype == "build_city":
+                vertex = action.get("vertex")
+                if not self.citycheck(player, vertex):
+                    print("Invalid placement or insufficient resources.")
+                    continue
+                self.buildcity(player, vertex)
+                print(f"{player.name} upgraded {vertex} to a city.")
+            elif actiontype == "buy_dev_card":
                 self.buy_devcard(player)
-            elif choice == "5":
+            elif actiontype == "trade":
                 self.trade(player)
-            elif choice == "6":
+            elif actiontype == "use_dev_card":
                 self.use_devcard(player)
-            elif choice == "7":
-                print(f'{player.name} ended their turn.')
+            elif actiontype == "end_turn":
+                print(f"{player.name} ended their turn.")
                 break
             else:
-                print("Invalid choice. Please select a valid option.")
+                print("Invalid action. Try again.")
     def winner(self):
         for player in self.players:
             if player.vp >= 10:
@@ -272,25 +275,32 @@ class Game:
             if total_resources <= 7:
                 continue
             else:
-                remaining = total_resources // 2
-                print(f'{player.name}, you have {total_resources} resources. You must discard {remaining} resources.')
-                print(f'Your resources: {player.resources}')
-                while remaining>0:
-                    discard_choice = input(f'Enter the resource you want to discard (remaining to discard: {remaining}): ').strip().lower()
-                    if discard_choice not in player.resources or player.resources[discard_choice] <= 0:
-                        print("Invalid choice or insufficient resources. Try again.")
-                    else:
-                        player.resources[discard_choice] -= 1
-                        remaining -= 1
-                print(f'{player.name} has discarded the required resources. Remaining resources: {player.resources}')
+                amount = total_resources // 2
+                while True:
+                    choices = player.strategy.choose_discard(self, player, amount)
+                    if len(choices) != amount:
+                        print(f"You must select exactly {amount} resources.")
+                        continue
+
+                    resourcesremaining = player.resources.copy()
+                    valid = True
+
+                    for resource in choices:
+                        if (resource not in resourcesremaining or resourcesremaining[resource] <= 0):
+                            valid = False
+                            break
+                        resourcesremaining[resource] -= 1
+                    if not valid:
+                        print("Invalid discard selection. Try again.")
+                        continue
+                    player.resources = resourcesremaining
+                    print(f"{player.name} discarded {amount} resources.")
+                    break
     def move_robber(self, player):
         print(f'Current robber location: {self.board.robber.coord}')
         while True:
-            choice = input(f'{player.name}, please enter the new coordinates for the robber in the format "x,y": ').strip()
-            try:
-                x,y = choice.split(",")
-                coordinates = (int(x), int(y))
-            except ValueError:
+            coordinates = player.strategy.choose_robber_tile(self, player)
+            if coordinates is None:
                 print("Invalid format. Please enter coordinates in the format 'x,y'.")
                 continue
             newtile = next((tile for tile in self.board.tiles if tile.coord == coordinates), None)
@@ -314,11 +324,12 @@ class Game:
             print("No players to steal from.")
             return
         else:
-            print("Players you can steal from:")
-            for p in eligible_players:
-                print(f" - {p.name}")
             while True:
-                steal_choice = input(f'{player.name}, enter the name of the player you want to steal from: ').strip()
+                steal_choice = player.strategy.choose_robber_victim(
+                    self,
+                    player,
+                    eligible_players
+                )
                 target_player = next((p for p in eligible_players if p.name == steal_choice), None)
                 if target_player is None:
                     print("Invalid player name. Please choose from the eligible players.")
@@ -333,66 +344,85 @@ class Game:
                     print(f'{player.name} stole 1 {stolen_resource} from {target_player.name}.')
                     break
     def trade(self, player):
-        print(f'{player.name}, please enter the number of the player you want to trade with: ')
-        print("1) Player 1")
-        print("2) Player 2")
-        print("3) Player 3")
-        print("4) Player 4")
-        trade_player = input('5) Bank').strip()
-        if trade_player not in ['1','2','3','4','5']:
+        trade_player = player.strategy.choose_trade_target(self, player)
+        if trade_player is None:
             print("Invalid choice. Please select a valid option.")
             return
-        if trade_player == '5':
+
+        if trade_player == "bank":
             tradeable_resources = []
-            for k in player.resources:
-                if player.resources[k] >= 4:
-                    tradeable_resources.append(k)
+            for resource in player.resources:
+                if player.resources[resource] >= 4:
+                    tradeable_resources.append(resource)
             if len(tradeable_resources) == 0:
                 print("You do not have enough resources to trade with the bank.")
                 return
-            print(f'{player.name}, you can trade with the bank with the following resources: {player.resources}')
-            trade_choice = input(f'{player.name}, please enter the resource you want to trade to the bank: ').strip().lower()
-            if trade_choice not in tradeable_resources:
+
+            proposal = player.strategy.choose_bank_trade(
+                self,
+                player,
+                tradeable_resources
+            )
+            trade_choice = proposal.get("give")
+            receive_choice = proposal.get("receive")
+            resources = ["wood", "brick", "sheep", "wheat", "ore"]
+
+            if (
+                trade_choice not in tradeable_resources
+                or receive_choice not in resources
+                or trade_choice == receive_choice
+            ):
                 print("Invalid choice or insufficient resources. Try again.")
                 return
-            else:
-                player.resources[trade_choice] -= 4
-                print(f'{player.name}, you traded 4 {trade_choice} to the bank.')
-                receive_choice = input(f'{player.name}, please enter the resource you want to receive from the bank: ').strip().lower()
-                if receive_choice not in ['wood','brick','sheep','wheat','ore'] or trade_choice == receive_choice:
-                    print("Invalid choice. Please select a valid resource.")
-                    player.resources[trade_choice] += 4
-                    return
-                else:
-                    player.resources[receive_choice] += 1
-                    print(f'{player.name}, you have received 1 {receive_choice} from the bank.')
-        if trade_player in ['1','2','3','4']:
-            target_player = self.players[int(trade_player) - 1]
-            if target_player is player:
-                print("You cannot trade with yourself.")
-                return
-            trade_player = target_player
-            print(f'{player.name}, you are trading with {trade_player.name}.')
-            offer_resource = input(f'{player.name}, please enter the resource you want to offer: ').strip().lower()
-            if offer_resource not in player.resources or player.resources[offer_resource] <= 0:
-                print("Invalid choice or insufficient resources. Try again.")
-                return
-            request_resource = input(f'{player.name}, please enter the resource you want to request: ').strip().lower()
-            if request_resource not in trade_player.resources or trade_player.resources[request_resource] <= 0:
-                print(f"{trade_player.name} does not have enough {request_resource}. Trade cannot proceed.")
-                return
-            elif offer_resource == request_resource:
-                print("You cannot offer and request the same resource. Trade cannot proceed.")
-                return
-            accept_trade = input(f'{trade_player.name}, do you accept the trade? (yes/no): ').strip().lower()
-            if accept_trade == 'yes':
-                player.resources[offer_resource] -= 1
-                player.resources[request_resource] += 1
-                trade_player.resources[offer_resource] += 1
-                trade_player.resources[request_resource] -= 1
-                print(f'Trade completed: {player.name} gave 1 {offer_resource} to {trade_player.name} and received 1 {request_resource}.')
-            else:
-                print(f'{trade_player.name} declined the trade.')
+
+            player.resources[trade_choice] -= 4
+            player.resources[receive_choice] += 1
+            print(
+                f'{player.name} traded 4 {trade_choice} to the bank '
+                f'for 1 {receive_choice}.'
+            )
+            return
+
+        if trade_player not in self.players or trade_player is player:
+            print("You cannot trade with that player.")
+            return
+
+        proposal = player.strategy.choose_player_trade(
+            self,
+            player,
+            trade_player
+        )
+        offer_resource = proposal.get("give")
+        request_resource = proposal.get("receive")
+
+        if offer_resource not in player.resources or player.resources.get(offer_resource, 0) <= 0:
+            print("Invalid choice or insufficient resources. Try again.")
+            return
+        if request_resource not in trade_player.resources or trade_player.resources.get(request_resource, 0) <= 0:
+            print(f"{trade_player.name} does not have enough {request_resource}.")
+            return
+        if offer_resource == request_resource:
+            print("You cannot offer and request the same resource.")
+            return
+
+        accepted = trade_player.strategy.choose_trade_response(
+            self,
+            trade_player,
+            player,
+            proposal
+        )
+        if not accepted:
+            print(f'{trade_player.name} declined the trade.')
+            return
+
+        player.resources[offer_resource] -= 1
+        player.resources[request_resource] += 1
+        trade_player.resources[offer_resource] += 1
+        trade_player.resources[request_resource] -= 1
+        print(
+            f'Trade completed: {player.name} gave 1 {offer_resource} '
+            f'to {trade_player.name} and received 1 {request_resource}.'
+        )
     def buy_devcard(self, player):
         dvcard_list = self.dvcard_list
         if len(dvcard_list) == 0:
@@ -428,20 +458,10 @@ class Game:
         if sum(player.dvcards.values()) == 0:
             print("You have no development cards to use.")
             return
-        print(f'{player.name}, your development cards: {player.dvcards}')
-        print("1) Knight\n2) Road Building\n3) Year of Plenty\n4) Monopoly")
-        card_choice = input("Enter the number of development card you want to use: ").strip()
-        if card_choice not in ['1','2','3','4']:
+        card_choice_actual = player.strategy.choose_dev_card(self, player)
+        if card_choice_actual not in player.dvcards:
             print("Invalid choice. Please select a valid option.")
             return
-        if card_choice == "1":
-            card_choice_actual = "knight"
-        elif card_choice == "2":
-            card_choice_actual = "road building"
-        elif card_choice == "3":
-            card_choice_actual = "year of plenty"
-        elif card_choice == "4":
-            card_choice_actual = "monopoly"
         if  player.dvcards[card_choice_actual] <= 0:
             print("Invalid choice or you do not have that card. Try again.")
             return
@@ -467,8 +487,8 @@ class Game:
             print(f'{player.name} used a Road Building card. You can build two roads for free.')
             k = 0
             while k <2:
-                vertices = input(f'Where do you want to place your road? Please enter two vertices separated by a space.').split()
-                if len(vertices) != 2:
+                vertices = player.strategy.choose_free_road(self, player, k + 1)
+                if vertices is None:
                     print("Please enter exactly two vertices.")
                     continue
                 a, b = vertices
@@ -484,20 +504,31 @@ class Game:
             player.dvcards["road building"] -= 1
         elif card_choice_actual == "year of plenty": 
             print(f'{player.name} used a Year of Plenty card. You can take any two resources from the bank.')
-            for _ in range(2):
-                resource_choice = input(f'Enter the resource you want to take (wood, brick, sheep, wheat, ore): ').strip().lower()
+            resources_taken = 0
+            while resources_taken < 2:
+                resource_choice = player.strategy.choose_resource(
+                    self,
+                    player,
+                    "Year of Plenty"
+                )
                 if resource_choice not in ['wood', 'brick', 'sheep', 'wheat', 'ore']:
                     print("Invalid resource choice. Try again.")
                 else:
                     player.resources[resource_choice] += 1
                     print(f'{player.name} took 1 {resource_choice} from the bank.')
+                    resources_taken += 1
             player.dvcards["year of plenty"] -= 1
         elif card_choice_actual == "monopoly":
             print(f'{player.name} used a Monopoly card. You can choose a resource type and take all of that resource from other players.')
-            resource_choice = input(f'Enter the resource you want to monopolize (wood, brick, sheep, wheat, ore): ').strip().lower()
-            if resource_choice not in ['wood', 'brick', 'sheep', 'wheat', 'ore']:
+            while True:
+                resource_choice = player.strategy.choose_resource(
+                    self,
+                    player,
+                    "Monopoly"
+                )
+                if resource_choice in ['wood', 'brick', 'sheep', 'wheat', 'ore']:
+                    break
                 print("Invalid resource choice. Try again.")
-                return
             total_taken = 0
             for other_player in self.players:
                 if other_player is not player:
@@ -554,3 +585,24 @@ class Game:
                                     if p.longest_road == True:
                                         p.vp -= 2
                                         p.longest_road = False
+    def legal_settlements(self, player, setup = False):
+        legal = []
+        for vertexname in self.board.vertices:
+            if self.settlementcheck(player, vertexname, setup):
+                legal.append(vertexname)
+        return legal
+    def legal_roads(self, player, setup=False, settlement = None):
+        legal = []
+        for road in self.board.roads:
+            if settlement is not None:
+                if settlement not in (road.v1, road.v2):
+                    continue
+            if self.roadcheck(player, road.v1, road.v2, setup):
+                legal.append((road.v1,road.v2))
+        return legal
+    def legal_cities(self, player):
+        legal = []
+        for vertexname in player.settlements:
+            if self.citycheck(player, vertexname):
+                legal.append(vertexname)
+        return legal
