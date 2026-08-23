@@ -487,6 +487,10 @@ class Game:
             print(f'{player.name} used a Road Building card. You can build two roads for free.')
             k = 0
             while k <2:
+                legalroads = self.legal_roads(player, setup=True)
+                if not legalroads:
+                    print(f'{player.name} has no legal roads remaining.')
+                    break
                 vertices = player.strategy.choose_free_road(self, player, k + 1)
                 if vertices is None:
                     print("Please enter exactly two vertices.")
